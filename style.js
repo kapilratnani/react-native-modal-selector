@@ -61,6 +61,14 @@ export default StyleSheet.create({
         borderBottomColor: '#ccc',
     },
 
+    optionWithCheckboxStyle: {
+        padding:           PADDING,
+        borderBottomWidth: 1,
+        borderBottomColor: '#ccc',
+        flexDirection: "row",
+        justifyContent: "space-between"
+    },
+    
     optionTextStyle: {
         textAlign: 'center',
         fontSize:  FONT_SIZE,

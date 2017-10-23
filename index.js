@@ -11,6 +11,7 @@ import {
     TouchableOpacity,
     TouchableWithoutFeedback,
     ViewPropTypes as RNViewPropTypes,
+    Switch
 } from 'react-native';
 
 import styles from './style';
@@ -37,7 +38,9 @@ const propTypes = {
     cancelTextStyle:           Text.propTypes.style,
     overlayStyle:              ViewPropTypes.style,
     cancelText:                PropTypes.string,
+    multiSelect:               PropTypes.bool,
     disabled:                  PropTypes.bool,
+    multiSelectPlaceholderText: PropTypes.string,
     supportedOrientations:     PropTypes.arrayOf(PropTypes.oneOf(['portrait', 'landscape', 'portrait-upside-down', 'landscape-left', 'landscape-right'])),
     keyboardShouldPersistTaps: PropTypes.oneOfType([PropTypes.string, PropTypes.bool]),
     backdropPressToClose:      PropTypes.bool,
@@ -46,6 +49,7 @@ const propTypes = {
 const defaultProps = {
     data:                      [],
     onChange:                  () => {},
+    onChangeMultiSelect:       () => {},
     initValue:                 'Select me!',
     animationType:             'slide',
     style:                     {},
@@ -61,6 +65,8 @@ const defaultProps = {
     overlayStyle:              {},
     cancelText:                'cancel',
     disabled:                  false,
+    multiSelect:               false,
+    multiSelectPlaceholderText: "Select something",
     supportedOrientations:     ['portrait', 'landscape'],
     keyboardShouldPersistTaps: 'always',
     backdropPressToClose:      false,
@@ -74,26 +80,35 @@ export default class ModalSelector extends BaseComponent {
 
         this._bind(
             'onChange',
+            'onChangeMultiSelect',
             'open',
             'close',
-            'renderChildren'
+            'renderChildren',
+            'renderChildrenMultiSelect'
         );
 
         this.state = {
             modalVisible:  false,
             transparent:   false,
+            multiSelected: {},
             selected:      'please select',
         };
     }
 
     componentDidMount() {
-        this.setState({selected: this.props.initValue});
+        if(!this.props.multiSelect)
+            this.setState({selected: this.props.initValue});
+        else
+            this.setState({multiSelected: this.props.multiSelected});
         this.setState({cancelText: this.props.cancelText});
     }
 
     componentWillReceiveProps(nextProps) {
         if (nextProps.initValue !== this.props.initValue) {
-            this.setState({selected: nextProps.initValue});
+            if(!this.props.multiSelect)
+                this.setState({selected: nextProps.initValue});
+            else
+                this.setState({multiSelected: nextProps.initValue});
         }
     }
 
@@ -103,6 +118,18 @@ export default class ModalSelector extends BaseComponent {
         this.close();
     }
 
+    onChangeMultiSelect(selected, item) {
+        let multiSelected = this.state.multiSelected;
+        if(selected)
+            multiSelected = {...this.state.multiSelected, [item.key]: item };
+        else {
+            multiSelected = {...this.state.multiSelected};
+            delete multiSelected[item.key];
+        }
+        this.props.onChangeMultiSelect(multiSelected);
+        this.setState({multiSelected,});
+    }
+    
     close() {
         this.setState({
             modalVisible: false,
@@ -175,7 +202,62 @@ export default class ModalSelector extends BaseComponent {
             </View>
         );
     }
+    
+    renderOptionWithCheckbox(option) {
+        return (
+            <View key={option.key} style={[styles.optionWithCheckboxStyle, this.props.optionWithCheckboxStyle]}>
+                <Text style={[styles.optionTextStyle,this.props.optionTextStyle]}>{option.label}</Text>
+                <Switch value={!!this.state.multiSelected[option.key]} onValueChange={(value) => this.onChangeMultiSelect(value, option)}/>
+            </View>
+        );
+    }
+    
+    renderOptionsMultiSelect() {
+        let options = this.props.data.map(item => {
+            if (item.section) {
+                return this.renderSection(item);
+            }
+            return this.renderOptionWithCheckbox(item);
 
+        });
+
+        const closeOverlay = this.props.backdropPressToClose;
+
+        return (
+            <TouchableWithoutFeedback key={'modalSelector' + (componentIndex++)} onPress={() => {closeOverlay && this.close()}}>
+                <View style={[styles.overlayStyle, this.props.overlayStyle]}>
+                    <View style={[styles.optionContainer, this.props.optionContainerStyle]}>
+                        <ScrollView keyboardShouldPersistTaps={this.props.keyboardShouldPersistTaps}>
+                            <View style={{paddingHorizontal: 10}}>
+                                {options}
+                            </View>
+                        </ScrollView>
+                    </View>
+                    <View style={styles.cancelContainer}>
+                        <TouchableOpacity onPress={this.close}>
+                            <View style={[styles.cancelStyle, this.props.cancelStyle]}>
+                                <Text style={[styles.cancelTextStyle,this.props.cancelTextStyle]}>{"Done"}</Text>
+                            </View>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </TouchableWithoutFeedback>);
+    }
+    
+    renderChildrenMultiSelect() {
+
+        if(this.props.children) {
+            return this.props.children;
+        }
+        let multiSelected = this.state.multiSelected;
+        let selection = Object.keys(multiSelected).length > 0?Object.keys(multiSelected).map((k)=>multiSelected[k].label).join(","):this.props.multiSelectPlaceholderText;
+        return (
+            <View style={[styles.selectStyle, this.props.selectStyle]}>
+                <Text style={[styles.selectTextStyle, this.props.selectTextStyle]}>{selection}</Text>
+            </View>
+        );
+    }
+    
     render() {
 
         const dp = (
@@ -187,7 +269,7 @@ export default class ModalSelector extends BaseComponent {
                 onRequestClose={this.close}
                 animationType={this.props.animationType}
             >
-                {this.renderOptionList()}
+                {!this.props.multiSelect?this.renderOptionList():this.renderOptionsMultiSelect()}
             </Modal>
         );
 
@@ -196,7 +278,7 @@ export default class ModalSelector extends BaseComponent {
                 {dp}
                 <TouchableOpacity onPress={this.open} disabled={this.props.disabled}>
                     <View pointerEvents="none">
-                        {this.renderChildren()}
+                        {!this.props.multiSelect?this.renderChildren():this.renderChildrenMultiSelect()}
                     </View>
                 </TouchableOpacity>
             </View>

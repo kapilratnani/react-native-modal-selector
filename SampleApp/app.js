@@ -15,7 +15,8 @@ class SampleApp extends Component {
         super();
 
         this.state = {
-            textInputValue: ''
+            textInputValue: '',
+            selected:{}
         }
     }
 
@@ -64,6 +65,29 @@ class SampleApp extends Component {
                         value={this.state.textInputValue} />
 
                 </ModalSelector>
+
+                <ModalSelector
+                    multiSelect={true}
+                    data={data}
+                    multiSelected={{}}
+                    multiSelectPlaceholderText={"Select a lot of yummy"}
+                    onChange={(option)=>{ alert(`${option} nom nom nom`) }}/>
+                    
+                <ModalSelector
+                    multiSelect={true}
+                    data={data}
+                    multiSelected={{}}
+                    multiSelectPlaceholderText={"Select a lot of yummy"}
+                    onChangeMultiSelect={(selected)=>{ this.setState({selected,}) }}>
+
+                    <TextInput
+                        style={{borderWidth:1, borderColor:'#ccc', padding:10, height:30}}
+                        editable={false}
+                        placeholder="Select something yummy!"
+                        value={`${Object.keys(this.state.selected).length} items selected`} />
+                    
+                </ModalSelector>
+
             </View>
         );
     }
